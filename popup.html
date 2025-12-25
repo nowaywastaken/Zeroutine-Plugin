@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 320px; padding: 15px; font-family: "PingFang SC", sans-serif; }
+    h3 { margin-top: 0; color: #333; }
+    
+    /* 输入指令的框 */
+    textarea { 
+      width: 100%; height: 60px; margin-bottom: 10px; 
+      border: 1px solid #ccc; border-radius: 5px; padding: 5px;
+      box-sizing: border-box; /* 让边框不撑大宽度 */
+    }
+
+    button { 
+      background-color: #34C759; /* 苹果绿 */
+      color: white; border: none; padding: 10px; 
+      border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold;
+    }
+    button:hover { background-color: #248a3d; }
+    
+    #status { 
+      margin-top: 10px; font-size: 12px; color: #666; 
+      background: #f0f0f0; padding: 8px; border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h3>✍️ 小万的 AI 嘴替</h3>
+  
+  <textarea id="userPrompt" placeholder="比如：帮我写个请假条，或者是搜索 M3 MacBook 评测..."></textarea>
+  
+  <button id="writeBtn">让 AI 生成并填写</button>
+  
+  <div id="status">准备就绪</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

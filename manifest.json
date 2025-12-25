@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "小万的AI阅读助手",
+  "version": "1.0",
+  "description": "帮我提取网页内容并总结",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
