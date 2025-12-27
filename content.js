@@ -61,5 +61,47 @@
                 }
             }
         }
+        
+        if (request.type === "SHOW_CONFIRM") {
+            const statusDiv = document.getElementById("ai-status-text");
+            // Highlight Warning
+            overlay.style.backgroundColor = "#FF9500"; // Orange
+            if (statusDiv) {
+                // Safe DOM manipulation (no innerHTML with dynamic content)
+                statusDiv.textContent = ''; // Clear
+                
+                const msgDiv = document.createElement('div');
+                msgDiv.style.fontWeight = 'bold';
+                msgDiv.style.marginBottom = '5px';
+                msgDiv.textContent = request.text; // Safe: textContent
+                
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display:flex; gap:10px; margin-top:5px;';
+                
+                const yesBtn = document.createElement('button');
+                yesBtn.id = 'ai-confirm-yes';
+                yesBtn.style.cssText = 'flex:1; background:white; color:#FF9500; border:none; border-radius:4px; padding:5px; cursor:pointer; font-weight:bold;';
+                yesBtn.textContent = 'Yes';
+                yesBtn.onclick = () => {
+                    chrome.runtime.sendMessage({ type: "CONFIRM_RESULT", result: true });
+                    statusDiv.textContent = "Switching...";
+                };
+                
+                const noBtn = document.createElement('button');
+                noBtn.id = 'ai-confirm-no';
+                noBtn.style.cssText = 'flex:1; background:rgba(0,0,0,0.2); color:white; border:none; border-radius:4px; padding:5px; cursor:pointer;';
+                noBtn.textContent = 'No';
+                noBtn.onclick = () => {
+                    chrome.runtime.sendMessage({ type: "CONFIRM_RESULT", result: false });
+                    statusDiv.textContent = "Cancelled switch.";
+                    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.85)"; // Reset
+                };
+                
+                btnContainer.appendChild(yesBtn);
+                btnContainer.appendChild(noBtn);
+                statusDiv.appendChild(msgDiv);
+                statusDiv.appendChild(btnContainer);
+            }
+        }
     });
 })();

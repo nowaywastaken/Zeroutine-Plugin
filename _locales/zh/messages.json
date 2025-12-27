@@ -1,0 +1,286 @@
+{
+  "extName": {
+    "message": "Zeroutine 扩展",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "AI 驱动的浏览器自动化与智能网页代理",
+    "description": "扩展描述"
+  },
+  "modeAuto": {
+    "message": "自动",
+    "description": "自动模式标签"
+  },
+  "modeAgent": {
+    "message": "代理",
+    "description": "代理模式标签"
+  },
+  "modeScripts": {
+    "message": "脚本",
+    "description": "脚本模式标签"
+  },
+  "placeholderPrompt": {
+    "message": "描述你的任务 (Auto模式会自动判断)...",
+    "description": "主输入框占位符"
+  },
+  "btnStart": {
+    "message": "🚀 开始执行",
+    "description": "开始按钮"
+  },
+  "btnStop": {
+    "message": "⏹ 停止当前任务",
+    "description": "停止按钮"
+  },
+  "statusReady": {
+    "message": "准备就绪",
+    "description": "就绪状态"
+  },
+  "statusConnecting": {
+    "message": "🚀 正在连接后台...",
+    "description": "连接中状态"
+  },
+  "statusTaskStarted": {
+    "message": "✅ 任务已启动！",
+    "description": "任务已启动状态"
+  },
+  "statusStopping": {
+    "message": "⛔️ 正在停止...",
+    "description": "停止中状态"
+  },
+  "statusStopped": {
+    "message": "✅ 已停止",
+    "description": "已停止状态"
+  },
+  "statusForceStopped": {
+    "message": "✅ 已强制停止",
+    "description": "已强制停止状态"
+  },
+  "statusForceResetting": {
+    "message": "⚠️ 后台未响应，正在强制重置...",
+    "description": "强制重置中状态"
+  },
+  "statusTaskInProgress": {
+    "message": "⏳ 任务进行中...",
+    "description": "任务进行中"
+  },
+  "statusReadyEmoji": {
+    "message": "✨ 就绪",
+    "description": "就绪带表情"
+  },
+  "memoryBackpack": {
+    "message": "🎒 我的记忆背包",
+    "description": "记忆背包按钮"
+  },
+  "memoryBackpackHide": {
+    "message": "🎒 隐藏记忆",
+    "description": "隐藏记忆按钮"
+  },
+  "placeholderMemory": {
+    "message": "在这里写下你的个人信息，AI 会记住它们...",
+    "description": "记忆文本框占位符"
+  },
+  "btnSaveMemory": {
+    "message": "💾 保存记忆",
+    "description": "保存记忆按钮"
+  },
+  "memorySaved": {
+    "message": "✅ 已保存",
+    "description": "记忆已保存状态"
+  },
+  "currentPageScripts": {
+    "message": "📂 当前页面脚本",
+    "description": "脚本区域标题"
+  },
+  "loading": {
+    "message": "加载中...",
+    "description": "加载文本"
+  },
+  "checkingScripts": {
+    "message": "检查脚本中...",
+    "description": "检查脚本状态"
+  },
+  "noScriptsForPage": {
+    "message": "此页面没有脚本",
+    "description": "无脚本消息"
+  },
+  "btnFix": {
+    "message": "🪄 修复",
+    "description": "修复按钮"
+  },
+  "btnDelete": {
+    "message": "删除",
+    "description": "删除按钮"
+  },
+  "btnSaveAsScript": {
+    "message": "📜 保存为脚本",
+    "description": "保存为脚本按钮"
+  },
+  "generatingScript": {
+    "message": "⏳ 正在生成脚本...",
+    "description": "生成脚本状态"
+  },
+  "scriptSaved": {
+    "message": "✅ 脚本已保存！",
+    "description": "脚本已保存状态"
+  },
+  "btnStartAITask": {
+    "message": "开始 AI 任务",
+    "description": "开始 AI 任务按钮"
+  },
+  "errorMissingElements": {
+    "message": "❌ 初始化错误：缺少元素",
+    "description": "缺少元素错误"
+  },
+  "errorEnterCommand": {
+    "message": "⚠️ 请输入指令",
+    "description": "空指令警告"
+  },
+  "errorNoActiveTab": {
+    "message": "未找到活动标签页",
+    "description": "无活动标签页错误"
+  },
+  "errorConnectionFailed": {
+    "message": "❌ 连接失败：",
+    "description": "连接失败前缀"
+  },
+  "errorPrefix": {
+    "message": "❌ 错误：",
+    "description": "错误前缀"
+  },
+  "fixPrompt": {
+    "message": "描述问题（如「颜色错误」或「不起作用」），或留空让 AI 检查：",
+    "description": "修复脚本提示"
+  },
+  "analyzingFixing": {
+    "message": "⏳ 正在分析和修复...",
+    "description": "分析修复中状态"
+  },
+  "fixSuccess": {
+    "message": "✅ 已修复！页面将重新加载。",
+    "description": "修复成功消息"
+  },
+  "fixFailed": {
+    "message": "❌ 修复失败：",
+    "description": "修复失败前缀"
+  },
+  "settingsTitle": {
+    "message": "⚡️ Zeroutine 设置",
+    "description": "设置页面标题"
+  },
+  "tabSettings": {
+    "message": "设置",
+    "description": "设置标签"
+  },
+  "tabScripts": {
+    "message": "脚本管理",
+    "description": "脚本标签"
+  },
+  "labelApiKey": {
+    "message": "API 密钥",
+    "description": "API 密钥标签"
+  },
+  "hintApiKey": {
+    "message": "支持 OpenRouter、OpenAI 及兼容的服务商。",
+    "description": "API 密钥提示"
+  },
+  "labelProviderUrl": {
+    "message": "模型服务商 URL",
+    "description": "服务商 URL 标签"
+  },
+  "hintProviderUrl": {
+    "message": "默认：OpenRouter。LocalAI/Ollama 使用：http://localhost:11434/v1/chat/completions",
+    "description": "服务商 URL 提示"
+  },
+  "labelModelName": {
+    "message": "模型名称",
+    "description": "模型名称标签"
+  },
+  "hintModelName": {
+    "message": "例如 gpt-4o, deepseek-r1, llama3.2",
+    "description": "模型名称提示"
+  },
+  "hintLocalStorage": {
+    "message": "🔒 您的密钥和配置存储在本地 Chrome 存储中。",
+    "description": "本地存储提示"
+  },
+  "btnSaveSettings": {
+    "message": "保存设置",
+    "description": "保存设置按钮"
+  },
+  "settingsSaved": {
+    "message": "✅ 设置已保存",
+    "description": "设置已保存状态"
+  },
+  "errorApiKeyEmpty": {
+    "message": "❌ API 密钥不能为空",
+    "description": "API 密钥为空错误"
+  },
+  "loadingScripts": {
+    "message": "加载脚本中...",
+    "description": "加载脚本"
+  },
+  "noScriptsYet": {
+    "message": "还没有生成过任何脚本",
+    "description": "无脚本消息"
+  },
+  "labelMatchPattern": {
+    "message": "匹配规则",
+    "description": "匹配规则标签"
+  },
+  "labelCode": {
+    "message": "代码 (Javascript)",
+    "description": "代码标签"
+  },
+  "viewHistory": {
+    "message": "🕒 查看历史版本",
+    "description": "查看历史链接"
+  },
+  "noCodeFound": {
+    "message": "// 未找到代码",
+    "description": "无代码占位符"
+  },
+  "btnDisable": {
+    "message": "禁用",
+    "description": "禁用按钮"
+  },
+  "btnEnable": {
+    "message": "启用",
+    "description": "启用按钮"
+  },
+  "btnSaveChanges": {
+    "message": "保存修改",
+    "description": "保存修改按钮"
+  },
+  "updateSuccess": {
+    "message": "✅ 更新成功",
+    "description": "更新成功"
+  },
+  "scriptDeleted": {
+    "message": "🗑️ 脚本已删除",
+    "description": "脚本已删除"
+  },
+  "noHistoryVersions": {
+    "message": "暂无历史版本",
+    "description": "无历史"
+  },
+  "btnRollback": {
+    "message": "回退",
+    "description": "回退按钮"
+  },
+  "confirmRollback": {
+    "message": "确认回退到此版本？当前未保存的代码将丢失。",
+    "description": "回退确认"
+  },
+  "confirmDelete": {
+    "message": "确定要删除这个脚本吗？",
+    "description": "删除确认"
+  },
+  "metadataParsed": {
+    "message": "ℹ️ 已从代码中解析元数据",
+    "description": "元数据已解析信息"
+  },
+  "zombieTask": {
+    "message": "⛔️ 任务已被强制终止 (僵尸任务)",
+    "description": "僵尸任务消息"
+  }
+}

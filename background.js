@@ -1,7 +1,76 @@
-// =================配置区域=================
-// const API_KEY = '...'; // Removed: use storage instead
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// =========================================
+// =================Configuration=================
+// API Key is stored in chrome.storage.local
+// ================================================
+
+// Security: Validate AI-generated code before execution
+function validateCodeSafety(code) {
+    const dangerousPatterns = [
+        // Code execution
+        /\beval\s*\(/i,
+        /\bnew\s+Function\s*\(/i,
+        /setTimeout\s*\(\s*['"`]/i,  // String-based setTimeout
+        /setInterval\s*\(\s*['"`]/i, // String-based setInterval
+        
+        // Data access
+        /document\.cookie/i,
+        /localStorage\.getItem\s*\(['"]apiKey['"]\)/i,
+        /chrome\.storage/i,
+        /sessionStorage/i,
+        /indexedDB/i,
+        
+        // Network exfiltration
+        /\bfetch\s*\(['"](?!https?:\/\/)/i,  // Relative fetch
+        /XMLHttpRequest/i,
+        /navigator\.sendBeacon/i,
+        /WebSocket/i,
+        
+        // DOM injection
+        /<script[^>]*src\s*=/i,
+        /document\.write/i,
+        /insertAdjacentHTML/i,
+        
+        // Window operations (phishing risk)
+        /window\.open\s*\(/i,
+        /window\.location\s*=/i,
+    ];
+    
+    const warnings = [];
+    for (const pattern of dangerousPatterns) {
+        if (pattern.test(code)) {
+            warnings.push(`Potentially dangerous pattern detected: ${pattern.toString()}`);
+        }
+    }
+    
+    return { safe: warnings.length === 0, warnings };
+}
+
+// Rate limiting for API calls
+let lastApiCallTime = 0;
+const API_MIN_INTERVAL_MS = 500; // Minimum 500ms between calls
+
+// Helper: Create safe regex from URL match pattern
+// ReDoS Protection: Pattern length limited to 500 chars
+const MAX_PATTERN_LENGTH = 500;
+
+function createMatchRegex(pattern) {
+    try {
+        // Fix: Validate pattern before processing
+        if (!pattern || typeof pattern !== 'string' || pattern.trim().length === 0) {
+            console.warn('Empty or invalid match pattern');
+            return null;
+        }
+        // ReDoS protection: limit pattern length
+        if (pattern.length > MAX_PATTERN_LENGTH) {
+            console.warn('Pattern too long, potential ReDoS risk');
+            return null;
+        }
+        const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+        return new RegExp(`^${escaped}$`);
+    } catch (e) {
+        console.error('Invalid match pattern:', pattern, e);
+        return null;
+    }
+}
 
 // 全局状态 (内存中保留一份副本，但以此为准)
 // =========================================
@@ -82,6 +151,67 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     runAgentLoop();
     sendResponse({ status: "ok" });
+    return true; // Fix: Allow async response
+  }
+
+  // 1.5 🧠 智能路由 (SMART_START)
+  if (request.type === "SMART_START") {
+      console.log("🧠 收到智能任务请求:", request);
+      
+      // 先告诉前端我们收到了，正在分析
+      sendResponse({ status: "analyzing" });
+      
+      // 异步执行分析
+      (async () => {
+         try {
+             let intent = "AGENT"; // Default
+             
+             // 1. Check Explicit Mode
+             if (request.mode && request.mode !== "AUTO") {
+                 intent = request.mode;
+                 console.log(`🧐 用户指定模式: ${intent}`);
+             } else {
+                 // 2. Auto Determine
+                 intent = await determineIntent(request.prompt);
+                 console.log("🧐 自动分析意图:", intent);
+             }
+             
+             if (intent === "SCRIPT") {
+                 // 转去生成脚本 - Fix: Get actual URL from tab
+                 const tab = await chrome.tabs.get(request.tabId);
+                 await handleScriptGeneration(request.tabId, tab?.url || "*", request.prompt);
+             } else {
+                 // Agent Mode
+                 globalState = {
+                    active: true,
+                    tabId: request.tabId,
+                    userPrompt: request.prompt,
+                    stepInfo: "Starting analysis (Agent Mode)...",
+                    waitingForLoad: false,
+                    actionHistory: [],
+                    lastPrompt: request.prompt,
+                    initialMode: intent // Store initial mode
+                  };
+                  saveState();
+                  runAgentLoop();
+             }
+         } catch(e) {
+             console.error("Intent determination failed", e);
+             // Fallback to Agent
+             globalState = {
+                active: true,
+                tabId: request.tabId,
+                userPrompt: request.prompt,
+                stepInfo: "Fallback to Agent Mode...", 
+                waitingForLoad: false,
+                actionHistory: [],
+                lastPrompt: request.prompt
+              };
+              saveState();
+              runAgentLoop();
+         }
+      })();
+      return true; // async handling
   }
 
   if (request.type === "STOP_TASK") {
@@ -97,6 +227,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // 通知 Overlay 变红 (如果 Tab 还在的话)
       chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: globalState.stepInfo }).catch(()=>{});
       sendResponse({ status: "stopped" });
+      return true; // Fix: Ensure response channel stays open
   }
 
   // Popup 可以轮询这个接口获取状态
@@ -124,17 +255,108 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           .catch(err => sendResponse({ status: "error", error: err.message }));
       return true;
   }
+
+  // 🔌 历史转脚本
+  if (request.type === "CONVERT_HISTORY_TO_SCRIPT") {
+      if (!globalState.actionHistory || globalState.actionHistory.length === 0) {
+          sendResponse({ status: "error", error: "No history found" });
+          return true;
+      }
+      
+      // Fix: Use tabId from request if available, fallback to globalState
+      const targetTabId = request.tabId || globalState.tabId;
+      
+      // Get current URL from the tab
+      chrome.tabs.get(targetTabId, (tab) => {
+          const currentUrl = tab?.url || "*";
+          handleScriptGeneration(targetTabId, currentUrl, "Automate the steps I just did.", globalState.actionHistory)
+              .then(() => sendResponse({ status: "ok" }))
+              .catch(err => sendResponse({ status: "error", error: err.message }));
+      });
+      return true;
+  }
+
+  // 🔌 确认结果 (CONFIRM_RESULT)
+  if (request.type === "CONFIRM_RESULT") {
+      if (!globalState.waitingForConfirm) return;
+      
+      console.log("Confirmation Logic:", request.result);
+      globalState.waitingForConfirm = false;
+      saveState();
+
+      if (request.result === true) {
+          // YES -> Proceed to Script Generation
+          chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: "✅ Confirmed. Switching..." });
+          globalState.active = false;
+          saveState();
+          handleScriptGeneration(globalState.tabId, "URL", globalState.userPrompt, globalState.actionHistory);
+      } else {
+          // NO -> Continue as Agent
+          // We need to tell the AI that script mode was rejected
+          globalState.actionHistory.push({ 
+              thought: "User rejected switching to script mode.", 
+              action: { note: "Continue manually as Agent." } 
+          });
+          saveState();
+          chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: "👌 Continuing as Agent..." });
+          runAgentLoop();
+      }
+  }
 });
 
+// ==========================================
+// 🧠 意图识别
+// ==========================================
+async function determineIntent(userPrompt) {
+    const prompt = `
+    User Prompt: "${userPrompt}"
+    
+    Task: Classify if this is a "One-off Task" (better for an Agent to just do it) or a "Reusable Modification" (better for a Script).
+    
+    Examples:
+    - "Click the login button" -> AGENT
+    - "Fill this form with my info" -> AGENT
+    - "Find the cheapest price on this page" -> AGENT
+    - "Always hide the sidebar" -> SCRIPT
+    - "Make the font bigger" -> SCRIPT
+    - "Auto-skip ads on this site" -> SCRIPT
+    - "Download all images" -> AGENT (usually one-off) but could be SCRIPT if "Add a button to download all"
+    
+    Return ONLY a JSON object:
+    {
+      "intent": "AGENT" | "SCRIPT",
+      "reason": "short explanation"
+    }
+    `;
+    
+    try {
+        const resp = await callAI(prompt, "json_object");
+        const jsonMatch = resp.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.error("Intent check: No JSON found in response");
+            return "AGENT";
+        }
+        const data = JSON.parse(jsonMatch[0]);
+        return data.intent || "AGENT"; 
+    } catch (e) {
+        console.error("Intent check failed, defaulting to AGENT", e);
+        return "AGENT";
+    }
+}
 // ==========================================
 // 🔌 脚本生成逻辑 & 修复逻辑
 // ==========================================
 async function handleScriptRepair(tabId, scriptId, complaint) {
-    // 1. Get Script
+    // 1. Get Script Metadata
     const { userScripts } = await chrome.storage.local.get("userScripts");
     const scriptIdx = userScripts.findIndex(s => s.id === scriptId);
     if (scriptIdx === -1) throw new Error("Script not found");
     const script = userScripts[scriptIdx];
+
+    // 1.5. Get Script Code from storage (V2 Split Storage)
+    const codeKey = `ujs_${scriptId}`;
+    const codeData = await chrome.storage.local.get(codeKey);
+    const currentCode = codeData[codeKey] || "// No code found";
 
     // 2. Get Page Context
     let pageData = { text: "" };
@@ -149,7 +371,7 @@ async function handleScriptRepair(tabId, scriptId, complaint) {
     This is an existing Tampermonkey-style script that is failing or needs update.
     Current Code: 
     \`\`\`javascript
-    ${script.code}
+    ${currentCode}
     \`\`\`
     
     User Complaint: "${complaint}"
@@ -190,11 +412,16 @@ async function handleScriptRepair(tabId, scriptId, complaint) {
     const oldCode = oldCodeMap[`ujs_${scriptId}`] || "";
 
     if (!freshScript.history) freshScript.history = [];
-    freshScript.history.push({ 
+    // Fix: Use unshift to add newest first (consistent with options.js)
+    freshScript.history.unshift({ 
         code: oldCode, 
         timestamp: Date.now(), 
         reason: "Before Repair: " + complaint 
     });
+    // Limit history to prevent unbounded growth (keep newest 15)
+    if (freshScript.history.length > 15) {
+        freshScript.history = freshScript.history.slice(0, 15);
+    }
     
     freshScript.updatedAt = Date.now();
     
@@ -211,14 +438,18 @@ async function handleScriptRepair(tabId, scriptId, complaint) {
     return true;
 }
 
-async function handleScriptGeneration(tabId, url, userPrompt) {
-    // 0. Inject Tools (ALL FRAMES)
+async function handleScriptGeneration(tabId, url, userPrompt, contextHistory = []) {
+    // 0. Inject Tools (ALL FRAMES) - Fix: Add error recovery
+    let toolsInjected = false;
     try {
         await chrome.scripting.executeScript({
             target: { tabId, allFrames: true },
             files: ["lib/dom_tools.js"]
         });
-    } catch (e) { console.error("Tool injection failed", e); }
+        toolsInjected = true;
+    } catch (e) { 
+        console.warn("Tool injection failed, will use basic analysis", e); 
+    }
 
     // 1. Initial Analysis (Quick overview)
     let pageData = { text: "" };
@@ -226,6 +457,17 @@ async function handleScriptGeneration(tabId, url, userPrompt) {
         const result = await chrome.scripting.executeScript({ target: { tabId }, function: analyzePageElements });
         pageData = result[0].result;
     } catch (e) { console.error("Analysis failed", e); }
+    
+    // Fix: Get actual URL from tab if parameter is invalid
+    let actualUrl = url;
+    if (!url || url === "Current URL" || url === "URL") {
+        try {
+            const tab = await chrome.tabs.get(tabId);
+            actualUrl = tab?.url || "*";
+        } catch(e) {
+            actualUrl = "*";
+        }
+    }
 
     // 1.5. Get Existing Context
     const { userScripts } = await chrome.storage.local.get("userScripts");
@@ -257,7 +499,7 @@ async function handleScriptGeneration(tabId, url, userPrompt) {
         // --- 2. Construct Prompt ---
         const prompt = `
         Context:
-        URL: ${url}
+        URL: ${actualUrl}
         Page Title: ${pageData.title || "Unknown"}
         Initial Text Snippet: ${pageData.text.substring(0, 500)}...
         
@@ -269,6 +511,7 @@ async function handleScriptGeneration(tabId, url, userPrompt) {
         - FINISH(code, explanation): Submit the final script.
         
         History:
+        ${contextHistory.length > 0 ? "PREVIOUS AGENT HISTORY (Use this to understand what to replicate):\n" + JSON.stringify(contextHistory) + "\n\nCURRENT SESSION:" : ""}
         ${history.map(h => `[${h.role}]: ${h.content}`).join("\n")}
         
         Instructions:
@@ -387,7 +630,7 @@ async function handleScriptGeneration(tabId, url, userPrompt) {
     const newScriptMeta = {
         id: scriptId,
         name: finalExplanation ? finalExplanation.substring(0, 20) : "AI Script",
-        matches: url.split('?')[0] + "*", 
+        matches: actualUrl.split('?')[0] + "*",  // Fix: Use actualUrl instead of url
         enabled: true,
         createdAt: Date.now()
     };
@@ -400,7 +643,22 @@ async function handleScriptGeneration(tabId, url, userPrompt) {
     
     await chrome.storage.local.set(writes);
     
-    // 5. Run Immediately
+    // 5. Validate code safety before execution - BLOCK if unsafe
+    const safetyCheck = validateCodeSafety(finalCode);
+    if (!safetyCheck.safe) {
+        console.error("🚫 Code blocked due to safety issues:", safetyCheck.warnings);
+        // Still save it but mark as disabled and DO NOT execute
+        const { userScripts: blockedScripts } = await chrome.storage.local.get("userScripts");
+        const blockedIdx = blockedScripts.findIndex(s => s.id === scriptId);
+        if (blockedIdx !== -1) {
+            blockedScripts[blockedIdx].enabled = false;
+            blockedScripts[blockedIdx].blockedReason = safetyCheck.warnings.join('; ');
+            await chrome.storage.local.set({ userScripts: blockedScripts });
+        }
+        throw new Error(`Code blocked for safety: ${safetyCheck.warnings[0]}`);
+    }
+    
+    // 6. Run Immediately (only if safe)
     chrome.scripting.executeScript({
         target: { tabId },
         func: (code) => {
@@ -429,10 +687,9 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
         if (userScripts && userScripts.length > 0) {
             const matchedScripts = userScripts.filter(script => {
                 if (!script.enabled) return false;
-                // Simple wildcard matching
-                const pattern = script.matches.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*');
-                const regex = new RegExp(`^${pattern}$`);
-                return regex.test(details.url);
+                // Use helper function for safe regex matching
+                const regex = createMatchRegex(script.matches);
+                return regex && regex.test(details.url);
             });
 
             if (matchedScripts.length > 0) {
@@ -450,11 +707,20 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
                         target: { tabId: details.tabId },
                         func: (code) => {
                             try {
-                                const scriptEl = document.createElement('script');
-                                scriptEl.textContent = code;
-                                // Inject immediately
-                                (document.head || document.documentElement).appendChild(scriptEl);
-                                scriptEl.remove();
+                                // Fix: Wait for document to be ready before injection
+                                const inject = () => {
+                                    const scriptEl = document.createElement('script');
+                                    scriptEl.textContent = code;
+                                    // Inject immediately
+                                    (document.head || document.documentElement).appendChild(scriptEl);
+                                    scriptEl.remove();
+                                };
+                                
+                                if (document.readyState === 'loading') {
+                                    document.addEventListener('DOMContentLoaded', inject, { once: true });
+                                } else {
+                                    inject();
+                                }
                             } catch(e) { console.error("Script Error:", e); }
                         },
                         args: [code],
@@ -518,10 +784,10 @@ async function runAgentLoop() {
 
   // 防止无限递归
   if (globalState.actionHistory.length > 20) {
-      updateOverlay("❌ 任务步骤过多，强制停止防止死循环。");
-      // updateOverlay("❌ 任务步骤过多，强制停止防止死循环。"); // Cannot call updateOverlay here, it's defined later
       globalState.stepInfo = "❌ 任务步骤过多，强制停止防止死循环。";
+      globalState.active = false;
       saveState();
+      chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: globalState.stepInfo }).catch(() => {});
       return;
   }
 
@@ -614,7 +880,7 @@ async function runAgentLoop() {
       {
         "thought": "Thinking...",
         "status": "continue" | "finish",
-        "action": { "navigate": "url", "fill": {id:val}, "click": "id" },
+        "action": { "navigate": "url", "fill": {id:val}, "click": "id", "create_script": {"reason": "why"} },
         "message": "feedback"
       }
     `;
@@ -651,6 +917,23 @@ async function runAgentLoop() {
     updateOverlay("⚡️ " + plan.thought);
 
     if (plan.action) {
+        if (plan.action.create_script) {
+            // Check if we need confirmation (Only if explicit AGENT mode)
+            if (globalState.initialMode === "AGENT") {
+                 updateOverlay("⚠️ Switching to Script Mode... Confirm?");
+                 chrome.tabs.sendMessage(globalState.tabId, { type: "SHOW_CONFIRM", text: "AI suggests switching to Script Mode. Allow?" }).catch(()=>{});
+                 globalState.waitingForConfirm = true;
+                 saveState();
+                 return; // Pause Loop
+            }
+            
+            updateOverlay("📜 发现脚本模式更合适，正在切换...");
+            globalState.active = false;
+            saveState();
+            await handleScriptGeneration(globalState.tabId, "URL", globalState.userPrompt, globalState.actionHistory);
+            return;
+        }
+
         if (plan.action.navigate) {
             updateOverlay("🚀 前往: " + plan.action.navigate);
             globalState.waitingForLoad = true;
@@ -840,14 +1123,22 @@ function executeActionPlan(action) {
 }
 
 // ==========================================
-// 🧠 AI (复用)
+// AI API Caller (with rate limiting and safety)
 // ==========================================
 async function callAI(prompt, format = "json_object") {
   const { apiKey, providerUrl, modelName } = await chrome.storage.local.get(["apiKey", "providerUrl", "modelName"]);
   
   if (!apiKey) {
-      throw new Error("❌ 未配置 API Key。请点击右上角⚙️图标进行设置。");
+      throw new Error("API Key not configured. Please click the ⚙️ icon to set it up.");
   }
+  
+  // Rate limiting: ensure minimum interval between calls
+  const now = Date.now();
+  const elapsed = now - lastApiCallTime;
+  if (elapsed < API_MIN_INTERVAL_MS) {
+      await new Promise(r => setTimeout(r, API_MIN_INTERVAL_MS - elapsed));
+  }
+  lastApiCallTime = Date.now();
   
   const API_ENDPOINT = providerUrl || "https://openrouter.ai/api/v1/chat/completions";
   const MODEL_ID = modelName || "google/gemini-2.5-flash";
@@ -857,19 +1148,26 @@ async function callAI(prompt, format = "json_object") {
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://localhost:3000",
+      "HTTP-Referer": chrome.runtime.getURL("/"),
     },
     body: JSON.stringify({
       model: MODEL_ID,
       response_format: { type: format }, 
       messages: [
-        { role: "system", content: "你是一个自动化操作助手。请输出纯 JSON。" },
+        { role: "system", content: "You are an automation assistant. Output pure JSON only." },
         { role: "user", content: prompt }
       ]
     })
   });
   
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) {
+      // Sanitize error message to avoid leaking sensitive info
+      const safeMessage = data.error.message?.replace(/sk-[a-zA-Z0-9]+/g, '[API_KEY_REDACTED]') || 'Unknown API error';
+      throw new Error(safeMessage);
+  }
+  if (!data.choices || !data.choices[0]) {
+      throw new Error('Invalid API response structure');
+  }
   return data.choices[0].message.content;
 }

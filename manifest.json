@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Zeroutine Extension",
-  "version": "1.0",
-  "description": "AI-powered browser automation and intelligent web agent",
+  "name": "__MSG_extName__",
+  "version": "1.1",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "permissions": ["activeTab", "scripting", "storage", "alarms", "webNavigation"],
   "action": {
     "default_popup": "popup.html"
@@ -11,5 +12,8 @@
   "background": {
     "service_worker": "background.js"
   },
-  "host_permissions": ["<all_urls>"]
+  "host_permissions": ["<all_urls>"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }

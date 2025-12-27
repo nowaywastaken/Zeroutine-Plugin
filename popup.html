@@ -32,45 +32,55 @@
     <button id="settingsBtn" style="background: none; border: none; font-size: 20px; width: auto; padding: 0; cursor: pointer;">⚙️</button>
   </div>
 
-  <!-- Tab Switcher -->
-  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-    <button id="tabBtnAgent" style="flex: 1; opacity: 1; background-color: #34C759;">🤖 Agent</button>
-    <button id="tabBtnScripts" style="flex: 1; opacity: 0.5; background-color: #007AFF;">🔌 Scripts</button>
+  <!-- Mode Slider (Segmented Control) -->
+  <div class="mode-slider" style="display: flex; background: #e0e0e0; border-radius: 8px; padding: 2px; margin-bottom: 15px;">
+    <label style="flex: 1; text-align: center; cursor: pointer;">
+      <input type="radio" name="mode" value="AUTO" checked style="display: none;">
+      <span class="mode-label" data-i18n="modeAuto" style="display: block; padding: 6px; border-radius: 6px; font-size: 13px; font-weight: bold;">Auto</span>
+    </label>
+    <label style="flex: 1; text-align: center; cursor: pointer;">
+      <input type="radio" name="mode" value="AGENT" style="display: none;">
+      <span class="mode-label" data-i18n="modeAgent" style="display: block; padding: 6px; border-radius: 6px; font-size: 13px; font-weight: bold;">Agent</span>
+    </label>
+    <label style="flex: 1; text-align: center; cursor: pointer;">
+      <input type="radio" name="mode" value="SCRIPT" style="display: none;">
+      <span class="mode-label" data-i18n="modeScripts" style="display: block; padding: 6px; border-radius: 6px; font-size: 13px; font-weight: bold;">Scripts</span>
+    </label>
   </div>
+  <style>
+    /* Simple active state styling */
+    input[name="mode"]:checked + .mode-label {
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+  </style>
   
-  <!-- TAB 1: AGENT (Original) -->
-  <div id="tabAgent">
-      <textarea id="userPrompt" placeholder="比如：帮我写个请假条，或者是搜索 M3 MacBook 评测..."></textarea>
-      
-      <button id="writeBtn">让 AI 生成并填写</button>
-      <button id="stopBtn" style="background-color: #FF3B30; display: none; margin-top: 5px;">⏹ 停止当前任务</button>
-      
-      <div id="status">准备就绪</div>
+  <!-- Unified Input Area -->
+  <textarea id="userPrompt" data-i18n-placeholder="placeholderPrompt" placeholder="Describe your task (Auto mode will decide)..."></textarea>
+  
+  <button id="writeBtn" data-i18n="btnStart">🚀 Start Execution</button>
+  <button id="stopBtn" data-i18n="btnStop" style="background-color: #FF3B30; display: none; margin-top: 5px;">⏹ Stop Task</button>
+  
+  <div id="status" data-i18n="statusReady">Ready</div>
 
-      <!-- 🤖 AI Response Section -->
-      <textarea id="aiResponse" readonly placeholder="🤖 AI 的回答会出现在这里..." style="display: none; height: 120px; margin-top: 10px; background-color: #f9f9f9; color: #333;"></textarea>
-
-      <!-- 🎒 Memory Backpack Section -->
-      <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
-        <button id="toggleMemoryBtn" style="background-color: #007AFF; margin-bottom: 5px;">🎒 我的记忆背包</button>
-        <div id="memoryArea" style="display: none;">
-          <textarea id="memoryContent" placeholder="在这里写下你的个人信息（姓名、电话、地址等），AI 会记住它们..." style="height: 100px; font-size: 12px;"></textarea>
-          <button id="saveMemoryBtn" style="background-color: #FF9500; font-size: 12px; padding: 5px;">💾 保存记忆</button>
-        </div>
-      </div>
+  <!-- 🎒 Memory Backpack Section -->
+  <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
+    <button id="toggleMemoryBtn" data-i18n="memoryBackpack" style="background-color: #007AFF; margin-bottom: 5px;">🎒 My Memory</button>
+    <div id="memoryArea" style="display: none;">
+      <textarea id="memoryContent" data-i18n-placeholder="placeholderMemory" placeholder="Write your personal info here, AI will remember it..." style="height: 100px; font-size: 12px;"></textarea>
+      <button id="saveMemoryBtn" data-i18n="btnSaveMemory" style="background-color: #FF9500; font-size: 12px; padding: 5px;">💾 Save Memory</button>
+    </div>
   </div>
 
-  <!-- TAB 2: SCRIPTS (New) -->
-  <div id="tabScripts" style="display: none;">
-      <div id="scriptList" style="margin-bottom: 10px;">
-          <!-- Active Scripts will be listed here -->
-          <div style="text-align: center; color: #999; font-size: 12px;">当前页面暂无脚本</div>
+  <!-- Manage Scripts Section (Collapsible) -->
+  <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+      <div id="toggleScriptsBtn" style="cursor: pointer; font-size: 13px; font-weight: bold; color: #555; display: flex; justify-content: space-between;">
+          <span data-i18n="currentPageScripts">📂 Current Page Scripts</span>
+          <span id="scriptCountBadge">0</span>
       </div>
-      
-      <div style="border-top: 1px solid #eee; padding-top: 10px;">
-          <textarea id="scriptPrompt" placeholder="描述你想让 AI 写的脚本，例如 '把网页背景变成黑色'..." style="height: 50px; font-size: 12px;"></textarea>
-          <button id="generateScriptBtn" style="background-color: #007AFF;">✨ 生成新脚本</button>
-          <div id="scriptStatus" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+      <div id="scriptList" style="display: none; margin-top: 10px;">
+          <!-- Active Scripts will be listed here -->
+          <div style="text-align: center; color: #999; font-size: 12px;" data-i18n="loading">Loading...</div>
       </div>
   </div>
 

@@ -3,118 +3,303 @@
 <head>
   <meta charset="utf-8">
   <title>Settings - Zeroutine Extension</title>
+  <link rel="stylesheet" href="lib/prism.css">
   <style>
     body {
-      padding: 20px;
-      font-family: "PingFang SC", sans-serif;
-      max-width: 400px;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 800px;
       margin: 0 auto;
+      background-color: #f5f5f7;
+      color: #1d1d1f;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    h2 { margin-top: 0; color: #333; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
-    input[type="password"] {
+
+    /* Header & Tabs */
+    .header {
+      background: #fff;
+      padding: 20px 20px 0 20px;
+      border-bottom: 1px solid #d2d2d7;
+      flex-shrink: 0;
+    }
+    .header h2 {
+      margin: 0 0 15px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 20px;
+    }
+    .tab-btn {
+      padding: 10px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #86868b;
+      background: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+    }
+    .tab-btn:hover {
+      color: #1d1d1f;
+    }
+    .tab-btn.active {
+      color: #007AFF;
+    }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; /* Overlap border */
+      left: 0;
       width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      box-sizing: border-box;
+      height: 2px;
+      background: #007AFF;
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* Content Area */
+    .content-area {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Settings Form */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-bottom: 20px;
+    }
+
+    .form-group { margin-bottom: 24px; }
+    .form-group:last-child { margin-bottom: 0; }
+    
+    label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 500; 
+      color: #1d1d1f; 
       font-size: 14px;
     }
-    .hint { font-size: 12px; color: #888; margin-top: 5px; }
-    button {
+    
+    input[type="password"], input[type="text"] {
+      width: 100%;
+      padding: 12px; /* Taller touch target */
+      border: 1px solid #d2d2d7;
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 15px; /* Readable size */
+      background: #fff;
+      transition: all 0.2s;
+    }
+    input[type="password"]:focus, input[type="text"]:focus {
+      border-color: #007AFF;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+    }
+
+    .hint { 
+      font-size: 12px; 
+      color: #86868b; 
+      margin-top: 6px; 
+      line-height: 1.4;
+    }
+
+    button#saveBtn {
       background-color: #007AFF;
       color: white;
       border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
+      padding: 12px 24px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 15px;
+      font-weight: 500;
+      width: 100%;
+      transition: background-color 0.2s;
     }
-    button:hover { background-color: #0056b3; }
-    #status { margin-top: 10px; font-size: 14px; min-height: 20px; }
+    button#saveBtn:hover { background-color: #0062cc; }
+    button#saveBtn:active { transform: scale(0.99); }
+
+    #status { margin-top: 15px; font-size: 14px; text-align: center; }
     .success { color: #34C759; }
     .error { color: #FF3B30; }
-    
-    /* Script Card Styles */
+
+    /* Script List Styles (Updated) */
     .script-item {
-        background: #fff; border: 1px solid #eee; border-radius: 8px;
-        margin-bottom: 10px; overflow: hidden;
-        transition: all 0.2s ease;
+        background: #fff; 
+        border: 1px solid #e5e5e5; 
+        border-radius: 10px;
+        margin-bottom: 12px; 
+        overflow: hidden;
+        transition: box-shadow 0.2s ease;
+    }
+    .script-item:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
     .script-header {
-        padding: 12px; display: flex; justify-content: space-between; align-items: center;
-        background: #fdfdfd; cursor: pointer;
+        padding: 15px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        background: #fff; 
+        cursor: pointer;
+        user-select: none;
     }
-    .script-header:hover { background: #f5f5f5; }
+    .script-header:hover { background: #fafafa; }
+    
     .script-body {
-        padding: 15px; border-top: 1px solid #eee; display: none;
+        padding: 20px; 
+        border-top: 1px solid #f0f0f0; 
+        display: none;
         background: #fafafa;
     }
     .script-body.expanded { display: block; }
-    
-    .editor-label { font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
+
+    /* Editor Polish */
     .code-editor {
-        width: 100%; height: 150px; font-family: "Menlo", "Monaco", monospace;
-        font-size: 12px; border: 1px solid #ddd; border-radius: 4px;
-        padding: 8px; box-sizing: border-box; background: #2d2d2d; color: #f8f8f2;
+        width: 100%; 
+        height: 300px; /* Taller editor */
+        font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+        font-size: 13px; 
+        line-height: 1.5;
+        border: 1px solid #d1d1d6; 
+        border-radius: 6px;
+        padding: 12px; 
+        box-sizing: border-box; 
+        background: #1e1e1e; /* Dark theme editor */
+        color: #f8f8f2;
+        margin-bottom: 15px;
     }
-    .input-sm {
-        width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px;
-        box-sizing: border-box; font-size: 13px; margin-bottom: 10px;
-    }
+    
     .action-row {
-        display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;
+        display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;
     }
-    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-sm { 
+        padding: 6px 12px; 
+        font-size: 13px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        color: white; 
+        border: none;
+        font-weight: 500;
+        transition: opacity 0.2s;
+    }
+    .btn-sm:hover { opacity: 0.9; }
+
     .badge { 
-        padding: 2px 6px; border-radius: 4px; font-size: 10px; 
-        margin-left: 8px; font-weight: normal;
+        padding: 4px 8px; border-radius: 6px; font-size: 11px; 
+        margin-left: 10px; font-weight: 600; display: inline-block; vertical-align: middle;
     }
     .badge-on { background: #34C759; color: white; }
-    .badge-off { background: #999; color: white; }
-    
-    .history-list {
-        max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #eee;
-        margin: 10px 0; border-radius: 4px; display: none;
+    .badge-off { background: #8e8e93; color: white; }
+
+    /* Scrollbar Polish */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+    /* Toast Notification */
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: rgba(30, 30, 30, 0.9);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 1000;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        pointer-events: none;
     }
-    .history-item {
-        padding: 8px; border-bottom: 1px solid #f0f0f0; display: flex; 
-        justify-content: space-between; align-items: center; font-size: 12px;
+    .toast-notification.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
     }
-    .history-item:last-child { border-bottom: none; }
-    .history-meta { color: #888; }
+    .toast-notification.success { background: #34C759; }
+    .toast-notification.error { background: #FF3B30; }
+
   </style>
 </head>
 <body>
-  <h2>⚙️ 插件设置</h2>
-  
-  <div class="form-group">
-    <label for="apiKey">API Key (OpenRouter/OpenAI/Other)</label>
-    <input type="password" id="apiKey" placeholder="sk-...">
+
+  <div class="header">
+    <h2 data-i18n="settingsTitle">⚡️ Zeroutine Settings</h2>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="settings" data-i18n="tabSettings">Settings</button>
+      <button class="tab-btn" data-tab="scripts" data-i18n="tabScripts">Script Management</button>
+    </div>
+  </div>
+
+  <div class="content-area">
     
-    <label for="providerUrl" style="margin-top:10px;">Model Provider URL</label>
-    <input type="text" id="providerUrl" class="input-sm" placeholder="https://openrouter.ai/api/v1/chat/completions">
-    <div class="hint">Default: OpenRouter. For LocalAI/Ollama use: http://localhost:11434/v1/chat/completions</div>
+    <div id="tab-settings" class="tab-content active">
+      <div class="card">
+        <div class="form-group">
+          <label for="apiKey" data-i18n="labelApiKey">API Key</label>
+          <input type="password" id="apiKey" placeholder="sk-...">
+          <div class="hint" data-i18n="hintApiKey">Supports OpenRouter, OpenAI, and compatible providers.</div>
+        </div>
 
-    <label for="modelName" style="margin-top:10px;">Model Name</label>
-    <input type="text" id="modelName" class="input-sm" placeholder="google/gemini-2.5-flash">
-    <div class="hint">e.g. gpt-4o, deepseek-r1, llama3.2</div>
+        <div class="form-group">
+          <label for="providerUrl" data-i18n="labelProviderUrl">Model Provider URL</label>
+          <input type="text" id="providerUrl" placeholder="https://openrouter.ai/api/v1/chat/completions">
+          <div class="hint" data-i18n="hintProviderUrl">Default: OpenRouter. For LocalAI/Ollama use: http://localhost:11434/v1/chat/completions</div>
+        </div>
 
-    <div class="hint" style="margin-top:10px;">您的 Key 和配置仅保存在本地 Chrome Storage 中。</div>
+        <div class="form-group">
+          <label for="modelName" data-i18n="labelModelName">Model Name</label>
+          <input type="text" id="modelName" placeholder="google/gemini-2.5-flash">
+          <div class="hint" data-i18n="hintModelName">e.g. gpt-4o, deepseek-r1, llama3.2</div>
+        </div>
+
+        <div class="hint" style="margin-bottom: 20px;" data-i18n="hintLocalStorage">
+          🔒 Your keys and configuration are stored locally in Chrome Storage.
+        </div>
+        
+        <button id="saveBtn" data-i18n="btnSaveSettings">Save Settings</button>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <div id="tab-scripts" class="tab-content">
+       <div id="scriptContainer">
+          <!-- Scripts injected here -->
+          <div style="text-align:center; padding: 40px; color: #86868b;" data-i18n="loadingScripts">
+             <p>Loading scripts...</p>
+          </div>
+       </div>
+    </div>
+
   </div>
 
-  <button id="saveBtn">保存设置</button>
-  <div id="status"></div>
-
-  <hr style="margin: 20px 0; border: none; border-top: 1px dashed #ccc;">
-  
-  <h3>📜 脚本管理</h3>
-  <div id="scriptContainer" style="background:#f9f9f9; padding: 10px; border-radius: 5px; height: 300px; overflow-y: auto;">
-      <p style="color:#999; text-align:center;">暂无脚本</p>
-  </div>
-
+  <script src="lib/prism.js"></script>
+  <script src="lib/codejar.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

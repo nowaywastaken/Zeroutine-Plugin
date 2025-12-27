@@ -1,0 +1,286 @@
+{
+  "extName": {
+    "message": "Zeroutine Extension",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "AI-powered browser automation and intelligent web agent",
+    "description": "Extension description"
+  },
+  "modeAuto": {
+    "message": "Auto",
+    "description": "Auto mode label"
+  },
+  "modeAgent": {
+    "message": "Agent",
+    "description": "Agent mode label"
+  },
+  "modeScripts": {
+    "message": "Scripts",
+    "description": "Scripts mode label"
+  },
+  "placeholderPrompt": {
+    "message": "Describe your task (Auto mode will decide)...",
+    "description": "Main input placeholder"
+  },
+  "btnStart": {
+    "message": "🚀 Start Execution",
+    "description": "Start button"
+  },
+  "btnStop": {
+    "message": "⏹ Stop Task",
+    "description": "Stop button"
+  },
+  "statusReady": {
+    "message": "Ready",
+    "description": "Ready status"
+  },
+  "statusConnecting": {
+    "message": "🚀 Connecting to background...",
+    "description": "Connecting status"
+  },
+  "statusTaskStarted": {
+    "message": "✅ Task started!",
+    "description": "Task started status"
+  },
+  "statusStopping": {
+    "message": "⛔️ Stopping...",
+    "description": "Stopping status"
+  },
+  "statusStopped": {
+    "message": "✅ Stopped",
+    "description": "Stopped status"
+  },
+  "statusForceStopped": {
+    "message": "✅ Force stopped",
+    "description": "Force stopped status"
+  },
+  "statusForceResetting": {
+    "message": "⚠️ Background unresponsive, force resetting...",
+    "description": "Force resetting status"
+  },
+  "statusTaskInProgress": {
+    "message": "⏳ Task in progress...",
+    "description": "Task in progress"
+  },
+  "statusReadyEmoji": {
+    "message": "✨ Ready",
+    "description": "Ready with emoji"
+  },
+  "memoryBackpack": {
+    "message": "🎒 My Memory",
+    "description": "Memory backpack button"
+  },
+  "memoryBackpackHide": {
+    "message": "🎒 Hide Memory",
+    "description": "Hide memory button"
+  },
+  "placeholderMemory": {
+    "message": "Write your personal info here, AI will remember it...",
+    "description": "Memory textarea placeholder"
+  },
+  "btnSaveMemory": {
+    "message": "💾 Save Memory",
+    "description": "Save memory button"
+  },
+  "memorySaved": {
+    "message": "✅ Saved",
+    "description": "Memory saved status"
+  },
+  "currentPageScripts": {
+    "message": "📂 Current Page Scripts",
+    "description": "Scripts section title"
+  },
+  "loading": {
+    "message": "Loading...",
+    "description": "Loading text"
+  },
+  "checkingScripts": {
+    "message": "Checking scripts...",
+    "description": "Checking scripts status"
+  },
+  "noScriptsForPage": {
+    "message": "No scripts for this page",
+    "description": "No scripts message"
+  },
+  "btnFix": {
+    "message": "🪄 Fix",
+    "description": "Fix button"
+  },
+  "btnDelete": {
+    "message": "Delete",
+    "description": "Delete button"
+  },
+  "btnSaveAsScript": {
+    "message": "📜 Save as Script",
+    "description": "Save as script button"
+  },
+  "generatingScript": {
+    "message": "⏳ Generating script...",
+    "description": "Generating script status"
+  },
+  "scriptSaved": {
+    "message": "✅ Script saved!",
+    "description": "Script saved status"
+  },
+  "btnStartAITask": {
+    "message": "Start AI Task",
+    "description": "Start AI task button"
+  },
+  "errorMissingElements": {
+    "message": "❌ Init Error: Missing Elements",
+    "description": "Missing elements error"
+  },
+  "errorEnterCommand": {
+    "message": "⚠️ Please enter a command",
+    "description": "Empty command warning"
+  },
+  "errorNoActiveTab": {
+    "message": "No active tab found",
+    "description": "No active tab error"
+  },
+  "errorConnectionFailed": {
+    "message": "❌ Connection failed: ",
+    "description": "Connection failed prefix"
+  },
+  "errorPrefix": {
+    "message": "❌ Error: ",
+    "description": "Error prefix"
+  },
+  "fixPrompt": {
+    "message": "Describe the issue (e.g., 'colors wrong' or 'not working'), or leave empty for AI to check:",
+    "description": "Fix script prompt"
+  },
+  "analyzingFixing": {
+    "message": "⏳ Analyzing and fixing...",
+    "description": "Analyzing and fixing status"
+  },
+  "fixSuccess": {
+    "message": "✅ Fixed! Page will reload.",
+    "description": "Fix success message"
+  },
+  "fixFailed": {
+    "message": "❌ Fix failed: ",
+    "description": "Fix failed prefix"
+  },
+  "settingsTitle": {
+    "message": "⚡️ Zeroutine Settings",
+    "description": "Settings page title"
+  },
+  "tabSettings": {
+    "message": "Settings",
+    "description": "Settings tab"
+  },
+  "tabScripts": {
+    "message": "Script Management",
+    "description": "Scripts tab"
+  },
+  "labelApiKey": {
+    "message": "API Key",
+    "description": "API Key label"
+  },
+  "hintApiKey": {
+    "message": "Supports OpenRouter, OpenAI, and compatible providers.",
+    "description": "API Key hint"
+  },
+  "labelProviderUrl": {
+    "message": "Model Provider URL",
+    "description": "Provider URL label"
+  },
+  "hintProviderUrl": {
+    "message": "Default: OpenRouter. For LocalAI/Ollama use: http://localhost:11434/v1/chat/completions",
+    "description": "Provider URL hint"
+  },
+  "labelModelName": {
+    "message": "Model Name",
+    "description": "Model name label"
+  },
+  "hintModelName": {
+    "message": "e.g. gpt-4o, deepseek-r1, llama3.2",
+    "description": "Model name hint"
+  },
+  "hintLocalStorage": {
+    "message": "🔒 Your keys and configuration are stored locally in Chrome Storage.",
+    "description": "Local storage hint"
+  },
+  "btnSaveSettings": {
+    "message": "Save Settings",
+    "description": "Save settings button"
+  },
+  "settingsSaved": {
+    "message": "✅ Settings Saved",
+    "description": "Settings saved status"
+  },
+  "errorApiKeyEmpty": {
+    "message": "❌ API Key cannot be empty",
+    "description": "API Key empty error"
+  },
+  "loadingScripts": {
+    "message": "Loading scripts...",
+    "description": "Loading scripts"
+  },
+  "noScriptsYet": {
+    "message": "No scripts generated yet",
+    "description": "No scripts message"
+  },
+  "labelMatchPattern": {
+    "message": "Match Pattern",
+    "description": "Match pattern label"
+  },
+  "labelCode": {
+    "message": "Code (Javascript)",
+    "description": "Code label"
+  },
+  "viewHistory": {
+    "message": "🕒 View History",
+    "description": "View history link"
+  },
+  "noCodeFound": {
+    "message": "// No code found",
+    "description": "No code placeholder"
+  },
+  "btnDisable": {
+    "message": "Disable",
+    "description": "Disable button"
+  },
+  "btnEnable": {
+    "message": "Enable",
+    "description": "Enable button"
+  },
+  "btnSaveChanges": {
+    "message": "Save Changes",
+    "description": "Save changes button"
+  },
+  "updateSuccess": {
+    "message": "✅ Updated successfully",
+    "description": "Update success"
+  },
+  "scriptDeleted": {
+    "message": "🗑️ Script deleted",
+    "description": "Script deleted"
+  },
+  "noHistoryVersions": {
+    "message": "No history versions",
+    "description": "No history"
+  },
+  "btnRollback": {
+    "message": "Rollback",
+    "description": "Rollback button"
+  },
+  "confirmRollback": {
+    "message": "Confirm rollback to this version? Unsaved code will be lost.",
+    "description": "Rollback confirmation"
+  },
+  "confirmDelete": {
+    "message": "Are you sure you want to delete this script?",
+    "description": "Delete confirmation"
+  },
+  "metadataParsed": {
+    "message": "ℹ️ Metadata parsed from code",
+    "description": "Metadata parsed info"
+  },
+  "zombieTask": {
+    "message": "⛔️ Task forcefully terminated (Zombie Task)",
+    "description": "Zombie task message"
+  }
+}

@@ -1,11 +1,34 @@
-// 保存设置
+// === i18n Helper Functions ===
+function i18n(key) {
+    return chrome.i18n.getMessage(key) || key;
+}
+
+function applyI18n() {
+    // Apply text content translations
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const msg = i18n(key);
+        if (msg) el.textContent = msg;
+    });
+    // Apply placeholder translations
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        const msg = i18n(key);
+        if (msg) el.placeholder = msg;
+    });
+}
+
+// Apply i18n on load
+applyI18n();
+
+// Settings
 const saveBtn = document.getElementById('saveBtn');
 const apiKeyInput = document.getElementById('apiKey');
 const providerUrlInput = document.getElementById('providerUrl');
 const modelNameInput = document.getElementById('modelName');
 const statusDiv = document.getElementById('status');
 
-// 初始化：加载现有的 Key & Scripts & Model Config
+// Initialize: Load existing Key & Scripts & Model Config
 chrome.storage.local.get(['apiKey', 'userScripts', 'providerUrl', 'modelName'], (result) => {
     if (result.apiKey) {
         apiKeyInput.value = result.apiKey;
@@ -27,7 +50,7 @@ saveBtn.addEventListener('click', () => {
     if (!model) model = "google/gemini-2.5-flash";
 
     if (!key) {
-        showStatus('❌ API Key 不能为空', 'error');
+        showStatus(i18n('errorApiKeyEmpty'), 'error');
         return;
     }
 
@@ -36,22 +59,59 @@ saveBtn.addEventListener('click', () => {
         providerUrl: url,
         modelName: model
     }, () => {
-        showStatus('✅ 设置已保存', 'success');
+        showStatus(i18n('settingsSaved'), 'success');
         
         // Update input values to reflect defaults if they were empty
         providerUrlInput.value = url;
         modelNameInput.value = model;
-
-        setTimeout(() => {
-            statusDiv.innerText = '';
-        }, 2000);
     });
 });
 
 function showStatus(msg, type) {
-    statusDiv.textContent = msg;
-    statusDiv.className = type;
+    // 1. Update legacy div if visible (optional, but good for accessibility/fallback)
+    if(statusDiv && statusDiv.offsetParent !== null) {
+        statusDiv.textContent = msg;
+        statusDiv.className = type;
+        setTimeout(() => statusDiv.textContent = '', 3000);
+    }
+
+    // 2. Show Floating Toast
+    const existing = document.querySelector('.toast-notification');
+    if(existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification ${type}`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    // Use requestAnimationFrame to ensure DOM insertion is done before adding class
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
+
+// ===========================
+// 📑 Tab Logic
+// ===========================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Remove active from all
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    // Add active to current
+    btn.classList.add('active');
+    const tabId = btn.getAttribute('data-tab');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+  });
+});
+
 
 // ===========================
 // 📜 脚本管理逻辑 (Advanced)
@@ -60,7 +120,7 @@ const scriptContainer = document.getElementById("scriptContainer");
 
 function renderScripts(scripts) {
     if (!scripts || scripts.length === 0) {
-        scriptContainer.innerHTML = '<p style="color:#999; text-align:center; padding-top:20px;">还没有生成过任何脚本</p>';
+        scriptContainer.innerHTML = '<p style="color:#999; text-align:center; padding-top:20px;">' + i18n('noScriptsYet') + '</p>';
         return;
     }
 
@@ -71,47 +131,107 @@ function renderScripts(scripts) {
         item.className = "script-item";
         
         const enabled = script.enabled !== false; // default true
-        const statusBadge = enabled 
-            ? '<span class="badge badge-on">ON</span>' 
-            : '<span class="badge badge-off">OFF</span>';
             
-        // Header
+        // Header - Safe DOM construction
         const header = document.createElement("div");
         header.className = "script-header";
-        header.innerHTML = `
-            <div style="display:flex; align-items:center;">
-                <span style="font-weight:bold; font-size:14px; color:#333;">${script.name}</span>
-                ${statusBadge}
-            </div>
-            <div style="font-size:12px; color:#999;">${new Date(script.createdAt).toLocaleDateString()} ▼</div>
-        `;
-        // Remove old header.onclick, handled in toggleBody
-        // header.onclick = ...
+        
+        const headerLeft = document.createElement("div");
+        headerLeft.style.cssText = "display:flex; align-items:center;";
+        
+        const nameSpan = document.createElement("span");
+        nameSpan.style.cssText = "font-weight:bold; font-size:14px; color:#333;";
+        nameSpan.textContent = script.name; // Safe: textContent
+        
+        const badge = document.createElement("span");
+        badge.className = enabled ? "badge badge-on" : "badge badge-off";
+        badge.textContent = enabled ? "ON" : "OFF";
+        
+        headerLeft.appendChild(nameSpan);
+        headerLeft.appendChild(badge);
+        
+        const headerRight = document.createElement("div");
+        headerRight.style.cssText = "font-size:12px; color:#999;";
+        headerRight.textContent = new Date(script.createdAt).toLocaleDateString() + " ▼";
+        
+        header.appendChild(headerLeft);
+        header.appendChild(headerRight);
 
-        // Body
+        // Body - Safe DOM construction
         const body = document.createElement("div");
         body.className = "script-body";
-        body.innerHTML = `
-            <div class="editor-label">匹配规则 (Match Pattern)</div>
-            <input type="text" class="input-sm matches-input" value="${script.matches}">
-            
-            <div class="editor-label">代码 (Javascript)</div>
-            <div class="code-editor language-javascript" style="overflow:auto; resize:vertical;">Loading...</div>
-            
-            <!-- History Section -->
-            <div style="margin-top:10px;">
-                <a href="#" style="font-size:12px; color:#007AFF; text-decoration:none;" id="toggle-history-${script.id}">🕒 查看历史版本 (History)</a>
-                <div class="history-list" id="history-list-${script.id}">Loading history...</div>
-            </div>
-
-            <div class="action-row">
-                 <button class="btn-sm" style="background:${enabled ? '#FF9500' : '#34C759'}" id="toggle-${script.id}">
-                    ${enabled ? '禁用 (Disable)' : '启用 (Enable)'}
-                 </button>
-                 <button class="btn-sm" style="background:#FF3B30;" id="del-${script.id}">删除</button>
-                 <button class="btn-sm" style="background:#007AFF;" id="save-${script.id}">保存修改</button>
-            </div>
-        `;
+        
+        // Match pattern section
+        const matchLabel = document.createElement("div");
+        matchLabel.className = "editor-label";
+        matchLabel.textContent = i18n('labelMatchPattern');
+        
+        const matchInput = document.createElement("input");
+        matchInput.type = "text";
+        matchInput.className = "input-sm matches-input";
+        matchInput.value = script.matches || '';
+        
+        // Code section
+        const codeLabel = document.createElement("div");
+        codeLabel.className = "editor-label";
+        codeLabel.textContent = i18n('labelCode');
+        
+        const codeEditor = document.createElement("div");
+        codeEditor.className = "code-editor language-javascript";
+        codeEditor.style.cssText = "overflow:auto; resize:vertical;";
+        codeEditor.textContent = i18n('loading');
+        
+        // History section
+        const historySection = document.createElement("div");
+        historySection.style.marginTop = "10px";
+        
+        const historyToggle = document.createElement("a");
+        historyToggle.href = "#";
+        historyToggle.style.cssText = "font-size:12px; color:#007AFF; text-decoration:none;";
+        historyToggle.id = `toggle-history-${script.id}`;
+        historyToggle.textContent = i18n('viewHistory');
+        
+        const historyList = document.createElement("div");
+        historyList.className = "history-list";
+        historyList.id = `history-list-${script.id}`;
+        historyList.textContent = i18n('loading');
+        
+        historySection.appendChild(historyToggle);
+        historySection.appendChild(historyList);
+        
+        // Action row
+        const actionRow = document.createElement("div");
+        actionRow.className = "action-row";
+        
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "btn-sm";
+        toggleBtn.style.background = enabled ? '#FF9500' : '#34C759';
+        toggleBtn.id = `toggle-${script.id}`;
+        toggleBtn.textContent = enabled ? i18n('btnDisable') : i18n('btnEnable');
+        
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn-sm";
+        delBtn.style.background = "#FF3B30";
+        delBtn.id = `del-${script.id}`;
+        delBtn.textContent = i18n('btnDelete');
+        
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "btn-sm";
+        saveBtn.style.background = "#007AFF";
+        saveBtn.id = `save-${script.id}`;
+        saveBtn.textContent = i18n('btnSaveChanges');
+        
+        actionRow.appendChild(toggleBtn);
+        actionRow.appendChild(delBtn);
+        actionRow.appendChild(saveBtn);
+        
+        // Assemble body
+        body.appendChild(matchLabel);
+        body.appendChild(matchInput);
+        body.appendChild(codeLabel);
+        body.appendChild(codeEditor);
+        body.appendChild(historySection);
+        body.appendChild(actionRow);
         
         item.appendChild(header);
         item.appendChild(body);
@@ -177,7 +297,7 @@ function renderScripts(scripts) {
                     updates.matches = meta.match; // Overwrite matches if found in code
                     newMatches = meta.match; // Update local var for UI consistency if needed
                 }
-                showStatus('ℹ️ Metadata parsed from code', 'success');
+                showStatus(i18n('metadataParsed'), 'success');
             }
             // Always take manual matches input if metadata didn't overwrite it OR let metadata win. 
             // Strategy: logic above lets metadata win if present. If not, use input.
@@ -233,7 +353,7 @@ async function updateScript(id, changes) {
         writes["userScripts"] = scripts;
 
         await chrome.storage.local.set(writes);
-        showStatus('✅ 更新成功', 'success');
+        showStatus(i18n('updateSuccess'), 'success');
         renderScripts(scripts); 
     }
 }
@@ -241,7 +361,11 @@ async function updateScript(id, changes) {
 function renderHistoryList(script, listContainer, editor) {
     const history = script.history || [];
     if (history.length === 0) {
-        listContainer.innerHTML = '<div style="padding:10px; color:#999; text-align:center;">暂无历史版本</div>';
+        listContainer.textContent = '';
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style.cssText = 'padding:10px; color:#999; text-align:center;';
+        emptyDiv.textContent = i18n('noHistoryVersions');
+        listContainer.appendChild(emptyDiv);
         return;
     }
 
@@ -253,17 +377,36 @@ function renderHistoryList(script, listContainer, editor) {
         const dateStr = new Date(h.timestamp).toLocaleString();
         const reason = h.reason || "Update";
         
-        row.innerHTML = `
-            <div>
-                <span class="history-meta">${idx + 1}.</span> 
-                <span style="font-weight:bold; color:#555;">${reason}</span>
-                <div class="history-meta" style="font-size:10px;">${dateStr}</div>
-            </div>
-            <button class="btn-sm" style="background:#5856D6; padding:2px 8px; font-size:10px;">回退 (Rollback)</button>
-        `;
+        // Safe DOM construction
+        const infoDiv = document.createElement("div");
         
-        row.querySelector("button").onclick = async () => {
-            if(!confirm(`确认回退到此版本 (${dateStr})? 当前未保存的代码将丢失。`)) return;
+        const indexSpan = document.createElement("span");
+        indexSpan.className = "history-meta";
+        indexSpan.textContent = `${idx + 1}. `;
+        
+        const reasonSpan = document.createElement("span");
+        reasonSpan.style.cssText = "font-weight:bold; color:#555;";
+        reasonSpan.textContent = reason; // Safe: textContent
+        
+        const dateDiv = document.createElement("div");
+        dateDiv.className = "history-meta";
+        dateDiv.style.fontSize = "10px";
+        dateDiv.textContent = dateStr;
+        
+        infoDiv.appendChild(indexSpan);
+        infoDiv.appendChild(reasonSpan);
+        infoDiv.appendChild(dateDiv);
+        
+        const rollbackBtn = document.createElement("button");
+        rollbackBtn.className = "btn-sm";
+        rollbackBtn.style.cssText = "background:#5856D6; padding:2px 8px; font-size:10px;";
+        rollbackBtn.textContent = i18n('btnRollback');
+        
+        row.appendChild(infoDiv);
+        row.appendChild(rollbackBtn);
+        
+        rollbackBtn.onclick = async () => {
+            if(!confirm(i18n('confirmRollback'))) return;
             
             // Rollback Logic
             // We just update the editor value and let user click save, 
@@ -290,7 +433,7 @@ function renderHistoryList(script, listContainer, editor) {
 }
 
 function deleteScript(id) {
-    if (!confirm("确定要删除这个脚本吗?")) return;
+    if (!confirm(i18n('confirmDelete'))) return;
     
     chrome.storage.local.get("userScripts", (result) => {
         const scripts = result.userScripts || [];
@@ -301,7 +444,7 @@ function deleteScript(id) {
         
         chrome.storage.local.set({ userScripts: newScripts }, () => {
             renderScripts(newScripts);
-            showStatus('🗑️ 脚本已删除', 'success');
+            showStatus(i18n('scriptDeleted'), 'success');
         });
     });
 }
