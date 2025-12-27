@@ -9,7 +9,8 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // =========================================
 chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.set({ 
-        "agentState": { active: false, stepInfo: "🚀 扩展已就绪", waitingForLoad: false, actionHistory: [] }
+        "agentState": { active: false, stepInfo: "🚀 扩展已就绪", waitingForLoad: false, actionHistory: [] },
+        "userScripts": [] // 🔌 Init Script Storage
     });
     chrome.alarms.clearAll();
 });
@@ -78,47 +79,240 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // 异步返回
   }
+
+  // 🔌 生成脚本
+  if (request.type === "GENERATE_SCRIPT") {
+      handleScriptGeneration(request.tabId, request.url, request.prompt)
+          .then(() => sendResponse({ status: "ok" }))
+          .catch(err => sendResponse({ status: "error", error: err.message }));
+      return true;
+  }
+  
+  // 🔌 修复脚本
+  if (request.type === "REPAIR_SCRIPT") {
+      handleScriptRepair(request.tabId, request.scriptId, request.complaint)
+          .then(() => sendResponse({ status: "ok" }))
+          .catch(err => sendResponse({ status: "error", error: err.message }));
+      return true;
+  }
 });
 
-// 2. 监听页面加载完成 (用于跨页面任务)
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Service Worker 恢复
-  if (!globalState.active) {
-      const data = await chrome.storage.local.get("agentState");
-      if (data.agentState) {
-          globalState = data.agentState;
-      }
-  }
+// ==========================================
+// 🔌 脚本生成逻辑 & 修复逻辑
+// ==========================================
+async function handleScriptRepair(tabId, scriptId, complaint) {
+    // 1. Get Script
+    const { userScripts } = await chrome.storage.local.get("userScripts");
+    const scriptIdx = userScripts.findIndex(s => s.id === scriptId);
+    if (scriptIdx === -1) throw new Error("Script not found");
+    const script = userScripts[scriptIdx];
 
-  // 只要 loading 结束，不管是不是我们的任务 tab，都先检查一下
-  if (globalState.active && tabId === globalState.tabId && changeInfo.status === 'complete') {
-    
-    // 🚑 关键修复：页面一加载完，马上注入 Overlay，不管是否 waiting
+    // 2. Get Page Context
+    let pageData = { text: "" };
     try {
-        await chrome.scripting.executeScript({
-            target: { tabId: globalState.tabId },
-            files: ["content.js"]
-        });
-        // 恢复显示之前的状态
-        chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: globalState.stepInfo }).catch(()=>{});
-    } catch (e) { }
+        const result = await chrome.scripting.executeScript({ target: { tabId }, function: analyzePageElements });
+        pageData = result[0].result;
+    } catch (e) { console.error("Analysis failed", e); }
 
-    if (globalState.waitingForLoad) {
-      console.log("页面加载完成，继续执行任务...");
-      
-      // 更新状态让用户看见
-      globalState.stepInfo = "👀 页面加载完毕，正在观察...";
-      saveState();
-      chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: globalState.stepInfo }).catch(()=>{});
-
-      globalState.waitingForLoad = false;
-      saveState(); 
-
-      // 稍微给一点点时间让 DOM 稳定，但不要太久
-      setTimeout(() => {
-        runAgentLoop();
-      }, 1000);
+    // 3. Prompt
+    const prompt = `
+    Context:
+    This is an existing Tampermonkey-style script that is failing or needs update.
+    Current Code: 
+    \`\`\`javascript
+    ${script.code}
+    \`\`\`
+    
+    User Complaint: "${complaint}"
+    
+    New Page Structure (Current State):
+    Page Text (snippet): ${pageData.text.substring(0, 1000)}
+    Inputs/Buttons: ${JSON.stringify(pageData.inputs).substring(0, 1000)}
+    
+    Task: Analyze why the script might fail (e.g. selectors changed) and write a FIXED version.
+    
+    Return ONLY a JSON object:
+    {
+      "code": "new fixed code",
+      "explanation": "what was fixed"
     }
+    `;
+
+    // 4. AI
+    const aiResp = await callAI(prompt, "json_object");
+    const jsonMatch = aiResp.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI returned invalid JSON");
+    const data = JSON.parse(jsonMatch[0]);
+
+    // 5. Update with Versioning
+    if (!script.history) script.history = [];
+    script.history.push({ 
+        code: script.code, 
+        timestamp: Date.now(), 
+        reason: "Before Repair: " + complaint 
+    });
+    
+    script.code = data.code;
+    script.updatedAt = Date.now();
+    
+    userScripts[scriptIdx] = script;
+    await chrome.storage.local.set({ userScripts });
+    
+    return true;
+}
+
+async function handleScriptGeneration(tabId, url, userPrompt) {
+    // 1. 获取页面上下文
+    let pageData = { text: "" };
+    try {
+        const result = await chrome.scripting.executeScript({ target: { tabId }, function: analyzePageElements });
+        pageData = result[0].result;
+    } catch (e) { console.error("Analysis failed", e); }
+
+    // 2. 构建 Prompt
+    const prompt = `
+    Context:
+    URL: ${url}
+    Page Text (snippet): ${pageData.text.substring(0, 1000)}
+    Page structure includes inputs: ${JSON.stringify(pageData.inputs)}
+    
+    User Request: Create a Tampermonkey-style Javascript script to: "${userPrompt}"
+    
+    Requirements:
+    1. The code should be valid Javascript.
+    2. It should run on the document context.
+    3. Return ONLY a JSON object:
+    {
+      "name": "Short Script Name",
+      "code": "document.body.style.background = 'black';", 
+      "explanation": "Brief explanation"
+    }
+    `;
+
+    // 3. Call AI
+    const aiResp = await callAI(prompt, "json_object");
+    const jsonMatch = aiResp.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI returned invalid JSON");
+    
+    const data = JSON.parse(jsonMatch[0]);
+    
+    // 4. Save to Storage
+    const { userScripts } = await chrome.storage.local.get("userScripts");
+    const newScripts = userScripts || [];
+    
+    const newScript = {
+        id: crypto.randomUUID(),
+        name: data.name || "AI Generated Script",
+        matches: url.split('?')[0] + "*", // Default to current URL pattern
+        code: data.code,
+        enabled: true,
+        createdAt: Date.now()
+    };
+    
+    newScripts.push(newScript);
+    await chrome.storage.local.set({ userScripts: newScripts });
+    
+    // 5. Run Immediately
+    chrome.scripting.executeScript({
+        target: { tabId },
+        func: (code) => {
+             const scriptEl = document.createElement('script');
+             scriptEl.textContent = code;
+             (document.head || document.documentElement).appendChild(scriptEl);
+             scriptEl.remove();
+        },
+        args: [newScript.code],
+        world: "MAIN"
+    }).catch(e => console.error("Immediate run failed", e));
+    
+    return true;
+}
+
+// 2. 监听页面加载完成 (用于跨页面任务)
+// 2. 监听页面加载完成 (用于跨页面任务 & 🔌 脚本注入)
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+      // A. 🔌 Tampermonkey 核心: 检查并注入用户脚本
+      try {
+          const { userScripts } = await chrome.storage.local.get("userScripts");
+          if (userScripts && userScripts.length > 0) {
+              const matchedScripts = userScripts.filter(script => {
+                  if (!script.enabled) return false;
+                  // Simple wildcard matching: *://example.com/*
+                  // Convert wildcard to regex for basic support
+                  const pattern = script.matches.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*');
+                  const regex = new RegExp(`^${pattern}$`);
+                  return regex.test(tab.url);
+              });
+
+              if (matchedScripts.length > 0) {
+                  console.log(`🔌 Found ${matchedScripts.length} scripts for ${tab.url}`);
+                  matchedScripts.forEach(script => {
+                       chrome.scripting.executeScript({
+                           target: { tabId: tabId },
+                           func: (code) => {
+                               // Wrap in IIFE to avoid pollution
+                               try {
+                                   console.log("🔌 running custom script...");
+                                   // Note: 'code' here is passed as string, but we can't eval easily in SW context depending on CSP.
+                                   // In executeScript func, the args are passed. 
+                                   // Actually, passing code as string to 'func' isn't how it works best. 
+                                   // Better to use 'function' injection or 'files'.
+                                   // But for dynamic code string, we might need a different approach or simplified eval if allowed.
+                                   // Since we are in the context of the page, we can use new Function or eval IF the page CSP allows it.
+                                   // A safer way for MV3 is maybe just passing the function body if we control it, 
+                                   // but user scripts are arbitrary strings.
+                                   // workaround: inject a script tag
+                                   const scriptEl = document.createElement('script');
+                                   scriptEl.textContent = code;
+                                   (document.head || document.documentElement).appendChild(scriptEl);
+                                   scriptEl.remove();
+                               } catch(e) { console.error("Script Error:", e); }
+                           },
+                           args: [script.code],
+                           world: "MAIN" // Inject into main world to access window objects easily
+                       }).catch(err => console.error("Injection failed:", err));
+                  });
+              }
+          }
+      } catch (e) { console.error("Script Check Error:", e); }
+
+      // B. 🤖 AI Agent 恢复逻辑
+      // Service Worker 恢复
+      if (!globalState.active) {
+          const data = await chrome.storage.local.get("agentState");
+          if (data.agentState) {
+              globalState = data.agentState;
+          }
+      }
+
+      // 只要 loading 结束，不管是不是我们的任务 tab，都先检查一下
+      if (globalState.active && tabId === globalState.tabId) {
+        
+        // 🚑 关键修复：页面一加载完，马上注入 Overlay，不管是否 waiting
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId: globalState.tabId },
+                files: ["content.js"]
+            });
+            // 恢复显示之前的状态
+            chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: globalState.stepInfo }).catch(()=>{});
+        } catch (e) { }
+
+        if (globalState.waitingForLoad) {
+          console.log("页面加载完成，继续执行任务...");
+          
+          // 更新状态让用户看见
+          globalState.stepInfo = "👀 页面加载完毕，正在观察...";
+          saveState();
+          chrome.tabs.sendMessage(globalState.tabId, { type: "UPDATE_OVERLAY", text: globalState.stepInfo }).catch(()=>{});
+
+          globalState.waitingForLoad = false;
+          saveState(); 
+          
+          chrome.alarms.create("continueLoop", { when: Date.now() + 1000 });
+        }
+      }
   }
 });
 
@@ -301,7 +495,7 @@ async function runAgentLoop() {
 
 // ⏰ 监听 Alarm
 chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === "nextStep" || alarm.name === "retryLoop") {
+    if (alarm.name === "nextStep" || alarm.name === "retryLoop" || alarm.name === "continueLoop") {
         runAgentLoop();
     }
     if (alarm.name === "checkNavigationTimeout") {

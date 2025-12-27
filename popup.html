@@ -31,24 +31,47 @@
     <h3 style="margin: 0;">✍️ 小万的 AI 嘴替</h3>
     <button id="settingsBtn" style="background: none; border: none; font-size: 20px; width: auto; padding: 0; cursor: pointer;">⚙️</button>
   </div>
-  
-  <textarea id="userPrompt" placeholder="比如：帮我写个请假条，或者是搜索 M3 MacBook 评测..."></textarea>
-  
-  <button id="writeBtn">让 AI 生成并填写</button>
-  <button id="stopBtn" style="background-color: #FF3B30; display: none; margin-top: 5px;">⏹ 停止当前任务</button>
-  
-  <div id="status">准备就绪</div>
 
-  <!-- 🤖 AI Response Section -->
-  <textarea id="aiResponse" readonly placeholder="🤖 AI 的回答会出现在这里..." style="display: none; height: 120px; margin-top: 10px; background-color: #f9f9f9; color: #333;"></textarea>
+  <!-- Tab Switcher -->
+  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+    <button id="tabBtnAgent" style="flex: 1; opacity: 1; background-color: #34C759;">🤖 Agent</button>
+    <button id="tabBtnScripts" style="flex: 1; opacity: 0.5; background-color: #007AFF;">🔌 Scripts</button>
+  </div>
+  
+  <!-- TAB 1: AGENT (Original) -->
+  <div id="tabAgent">
+      <textarea id="userPrompt" placeholder="比如：帮我写个请假条，或者是搜索 M3 MacBook 评测..."></textarea>
+      
+      <button id="writeBtn">让 AI 生成并填写</button>
+      <button id="stopBtn" style="background-color: #FF3B30; display: none; margin-top: 5px;">⏹ 停止当前任务</button>
+      
+      <div id="status">准备就绪</div>
 
-  <!-- 🎒 Memory Backpack Section -->
-  <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
-    <button id="toggleMemoryBtn" style="background-color: #007AFF; margin-bottom: 5px;">🎒 我的记忆背包</button>
-    <div id="memoryArea" style="display: none;">
-      <textarea id="memoryContent" placeholder="在这里写下你的个人信息（姓名、电话、地址等），AI 会记住它们..." style="height: 100px; font-size: 12px;"></textarea>
-      <button id="saveMemoryBtn" style="background-color: #FF9500; font-size: 12px; padding: 5px;">💾 保存记忆</button>
-    </div>
+      <!-- 🤖 AI Response Section -->
+      <textarea id="aiResponse" readonly placeholder="🤖 AI 的回答会出现在这里..." style="display: none; height: 120px; margin-top: 10px; background-color: #f9f9f9; color: #333;"></textarea>
+
+      <!-- 🎒 Memory Backpack Section -->
+      <div style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
+        <button id="toggleMemoryBtn" style="background-color: #007AFF; margin-bottom: 5px;">🎒 我的记忆背包</button>
+        <div id="memoryArea" style="display: none;">
+          <textarea id="memoryContent" placeholder="在这里写下你的个人信息（姓名、电话、地址等），AI 会记住它们..." style="height: 100px; font-size: 12px;"></textarea>
+          <button id="saveMemoryBtn" style="background-color: #FF9500; font-size: 12px; padding: 5px;">💾 保存记忆</button>
+        </div>
+      </div>
+  </div>
+
+  <!-- TAB 2: SCRIPTS (New) -->
+  <div id="tabScripts" style="display: none;">
+      <div id="scriptList" style="margin-bottom: 10px;">
+          <!-- Active Scripts will be listed here -->
+          <div style="text-align: center; color: #999; font-size: 12px;">当前页面暂无脚本</div>
+      </div>
+      
+      <div style="border-top: 1px solid #eee; padding-top: 10px;">
+          <textarea id="scriptPrompt" placeholder="描述你想让 AI 写的脚本，例如 '把网页背景变成黑色'..." style="height: 50px; font-size: 12px;"></textarea>
+          <button id="generateScriptBtn" style="background-color: #007AFF;">✨ 生成新脚本</button>
+          <div id="scriptStatus" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+      </div>
   </div>
 
   <script src="popup.js"></script>

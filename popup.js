@@ -3,6 +3,27 @@ const userPrompt = document.getElementById("userPrompt");
 const statusDiv = document.getElementById("status");
 const settingsBtn = document.getElementById("settingsBtn");
 
+const tabBtnAgent = document.getElementById("tabBtnAgent");
+const tabBtnScripts = document.getElementById("tabBtnScripts");
+const tabAgent = document.getElementById("tabAgent");
+const tabScripts = document.getElementById("tabScripts");
+
+// === Tab Switching Logic ===
+tabBtnAgent.addEventListener("click", () => {
+    tabAgent.style.display = "block";
+    tabScripts.style.display = "none";
+    tabBtnAgent.style.opacity = "1";
+    tabBtnScripts.style.opacity = "0.5";
+});
+
+tabBtnScripts.addEventListener("click", () => {
+    tabAgent.style.display = "none";
+    tabScripts.style.display = "block";
+    tabBtnAgent.style.opacity = "0.5";
+    tabBtnScripts.style.opacity = "1";
+    loadScriptsForCurrentTab();
+});
+
 if (settingsBtn) {
     settingsBtn.addEventListener("click", () => {
         if (chrome.runtime.openOptionsPage) {
@@ -157,4 +178,125 @@ function pollStatus() {
 }
 
 // 打开 Popup 时立即检查一次状态
+// 打开 Popup 时立即检查一次状态
 pollStatus();
+
+// =========================================
+// 🔌 脚本管理逻辑
+// =========================================
+const scriptList = document.getElementById("scriptList");
+const scriptPrompt = document.getElementById("scriptPrompt");
+const generateScriptBtn = document.getElementById("generateScriptBtn");
+const scriptStatus = document.getElementById("scriptStatus");
+
+async function loadScriptsForCurrentTab() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    scriptList.innerHTML = '<div style="text-align: center; color: #999;">正在检查脚本...</div>';
+    
+    // We can't directly query background for "scripts for this tab" yet easily unless we send a message
+    // simpler: just get all scripts and filter client side (OK for small number of scripts)
+    const { userScripts } = await chrome.storage.local.get("userScripts");
+    
+    scriptList.innerHTML = "";
+    let count = 0;
+
+    if (userScripts) {
+         try {
+             const url = tab.url;
+             userScripts.forEach(script => {
+                  const pattern = script.matches.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*');
+                  const regex = new RegExp(`^${pattern}$`);
+                  if (regex.test(url)) {
+                      count++;
+                      const div = document.createElement("div");
+                      div.style.padding = "8px";
+                      div.style.borderBottom = "1px solid #eee";
+                      div.style.display = "flex";
+                      div.style.justifyContent = "space-between";
+                      div.style.alignItems = "center";
+                      
+                      div.innerHTML = `
+                        <span style="font-weight:bold; font-size:13px;">${script.name}</span>
+                        <div>
+                            <button class="repair-btn" data-id="${script.id}" style="width:auto; padding:3px 8px; font-size:10px; background:#FF9500; margin-right:5px;" title="让 AI 修复此脚本">🪄 修复</button>
+                            <button class="del-btn" data-id="${script.id}" style="width:auto; padding:3px 8px; font-size:10px; background:#FF3B30;">删除</button>
+                        </div>
+                      `;
+                      scriptList.appendChild(div);
+                  }
+             });
+         } catch(e) { console.error(e); }
+    }
+    
+    if (count === 0) {
+        scriptList.innerHTML = '<div style="text-align: center; color: #999; font-size: 12px;">当前页面暂无脚本</div>';
+    }
+
+    // Add listeners
+    document.querySelectorAll(".del-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            const id = e.target.getAttribute("data-id");
+            const { userScripts } = await chrome.storage.local.get("userScripts");
+            const newScripts = userScripts.filter(s => s.id !== id);
+            await chrome.storage.local.set({ userScripts: newScripts });
+            loadScriptsForCurrentTab();
+        });
+    });
+
+    document.querySelectorAll(".repair-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+             const id = e.target.getAttribute("data-id");
+             const complaint = prompt("请简述问题 (例如: '颜色不对' 或 '没反应')，留空则让 AI 自己检查:");
+             if (complaint === null) return; // Cancelled
+
+             scriptStatus.innerText = "⏳ 正在分析修复...";
+             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+             
+             chrome.runtime.sendMessage({
+                 type: "REPAIR_SCRIPT",
+                 tabId: tab.id,
+                 scriptId: id,
+                 complaint: complaint || "Script is not working as expected. Please fix selectors."
+             }, (response) => {
+                 if (response.status === "ok") {
+                     alert("✅ 修复完成！页面将自动刷新。");
+                     chrome.tabs.reload(tab.id);
+                     window.close(); // Close popup
+                 } else {
+                     scriptStatus.innerText = "❌ 修复失败: " + response.error;
+                 }
+             });
+        });
+    });
+}
+
+generateScriptBtn.addEventListener("click", async () => {
+    const prompt = scriptPrompt.value;
+    if (!prompt) {
+        scriptStatus.innerText = "⚠️ 请输入描述";
+        return;
+    }
+    
+    scriptStatus.innerText = "⏳ 正在生成...";
+    generateScriptBtn.disabled = true;
+    
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    chrome.runtime.sendMessage({
+        type: "GENERATE_SCRIPT",
+        tabId: tab.id,
+        url: tab.url,
+        prompt: prompt
+    }, (response) => {
+        generateScriptBtn.disabled = false;
+        if (chrome.runtime.lastError) {
+             scriptStatus.innerText = "❌ Error: " + chrome.runtime.lastError.message;
+        } else if (response.status === "ok") {
+             scriptStatus.innerText = "✅ 脚本已生成并保存！";
+             loadScriptsForCurrentTab();
+             scriptPrompt.value = "";
+        } else {
+             scriptStatus.innerText = "❌ " + (response.error || "未知错误");
+        }
+    });
+});
