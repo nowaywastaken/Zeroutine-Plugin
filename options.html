@@ -253,6 +253,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="settings" data-i18n="tabSettings">Settings</button>
       <button class="tab-btn" data-tab="scripts" data-i18n="tabScripts">Script Management</button>
+      <button class="tab-btn" data-tab="memory" data-i18n="tabMemory">Memory</button>
     </div>
   </div>
 
@@ -294,6 +295,41 @@
              <p>Loading scripts...</p>
           </div>
        </div>
+    </div>
+
+    <div id="tab-memory" class="tab-content">
+      <div class="card">
+        <h3 style="margin-top: 0;">🧠 项目记忆</h3>
+        <p style="color: #86868b; font-size: 14px;">记忆系统会保存每个网站的成功选择器和任务模板，提升后续任务的执行速度和准确性。</p>
+        
+        <div id="memoryStats" style="margin: 20px 0; padding: 15px; background: #f5f5f7; border-radius: 8px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+            <div>
+              <div style="font-size: 28px; font-weight: 600; color: #007AFF;" id="statDomains">-</div>
+              <div style="font-size: 12px; color: #86868b;">域名</div>
+            </div>
+            <div>
+              <div style="font-size: 28px; font-weight: 600; color: #34C759;" id="statSelectors">-</div>
+              <div style="font-size: 12px; color: #86868b;">选择器</div>
+            </div>
+            <div>
+              <div style="font-size: 28px; font-weight: 600; color: #FF9500;" id="statTemplates">-</div>
+              <div style="font-size: 12px; color: #86868b;">任务模板</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="domainList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+          <!-- 域名列表将在这里渲染 -->
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button id="exportMemoryBtn" class="btn-sm" style="background: #007AFF; flex: 1;">📤 导出记忆</button>
+          <button id="importMemoryBtn" class="btn-sm" style="background: #34C759; flex: 1;">📥 导入记忆</button>
+          <button id="clearMemoryBtn" class="btn-sm" style="background: #FF3B30; flex: 1;">🗑️ 清除全部</button>
+        </div>
+        <input type="file" id="memoryFileInput" accept=".json" style="display: none;">
+      </div>
     </div>
 
   </div>

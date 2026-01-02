@@ -473,3 +473,180 @@ function parseMetadata(code) {
     
     return Object.keys(result).length > 0 ? result : null;
 }
+
+// ===========================
+// 🧠 记忆管理逻辑
+// ===========================
+
+// 初始化时加载记忆统计
+document.addEventListener('DOMContentLoaded', () => {
+    loadMemoryStats();
+});
+
+// 切换到 Memory 标签时刷新
+document.querySelector('[data-tab="memory"]')?.addEventListener('click', () => {
+    setTimeout(loadMemoryStats, 100);
+});
+
+async function loadMemoryStats() {
+    const MEMORY_STORAGE_KEY = 'projectMemory';
+    const data = await chrome.storage.local.get(MEMORY_STORAGE_KEY);
+    const store = data[MEMORY_STORAGE_KEY] || { domains: {} };
+    
+    // 计算统计
+    let totalSelectors = 0;
+    let totalTemplates = 0;
+    const domainList = [];
+    
+    for (const [domain, memory] of Object.entries(store.domains || {})) {
+        const selectorCount = Object.keys(memory.selectorPatterns || {}).length;
+        const templateCount = Object.keys(memory.taskTemplates || {}).length;
+        
+        totalSelectors += selectorCount;
+        totalTemplates += templateCount;
+        
+        domainList.push({
+            domain,
+            selectors: selectorCount,
+            templates: templateCount,
+            lastAccessed: memory.lastAccessed
+        });
+    }
+    
+    // 按最近访问排序
+    domainList.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+    
+    // 更新统计数字
+    document.getElementById('statDomains').textContent = domainList.length;
+    document.getElementById('statSelectors').textContent = totalSelectors;
+    document.getElementById('statTemplates').textContent = totalTemplates;
+    
+    // 渲染域名列表
+    const listContainer = document.getElementById('domainList');
+    listContainer.innerHTML = '';
+    
+    if (domainList.length === 0) {
+        listContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">暂无记忆数据</p>';
+        return;
+    }
+    
+    domainList.forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0;';
+        
+        const leftDiv = document.createElement('div');
+        
+        const domainSpan = document.createElement('span');
+        domainSpan.style.cssText = 'font-weight: 500; color: #333;';
+        domainSpan.textContent = item.domain;
+        
+        const metaDiv = document.createElement('div');
+        metaDiv.style.cssText = 'font-size: 11px; color: #999; margin-top: 3px;';
+        const lastAccess = item.lastAccessed ? new Date(item.lastAccessed).toLocaleDateString() : '未知';
+        metaDiv.textContent = `${item.selectors} 选择器 · ${item.templates} 模板 · 最后访问: ${lastAccess}`;
+        
+        leftDiv.appendChild(domainSpan);
+        leftDiv.appendChild(metaDiv);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-sm';
+        deleteBtn.style.cssText = 'background: #FF3B30; padding: 4px 8px; font-size: 11px;';
+        deleteBtn.textContent = '删除';
+        deleteBtn.onclick = async () => {
+            if (!confirm(`确定删除 ${item.domain} 的所有记忆？`)) return;
+            
+            const freshData = await chrome.storage.local.get(MEMORY_STORAGE_KEY);
+            const freshStore = freshData[MEMORY_STORAGE_KEY] || { domains: {} };
+            delete freshStore.domains[item.domain];
+            await chrome.storage.local.set({ [MEMORY_STORAGE_KEY]: freshStore });
+            
+            showStatus('已删除域名记忆', 'success');
+            loadMemoryStats();
+        };
+        
+        row.appendChild(leftDiv);
+        row.appendChild(deleteBtn);
+        listContainer.appendChild(row);
+    });
+}
+
+// 导出记忆
+document.getElementById('exportMemoryBtn')?.addEventListener('click', async () => {
+    const MEMORY_STORAGE_KEY = 'projectMemory';
+    const data = await chrome.storage.local.get(MEMORY_STORAGE_KEY);
+    const store = data[MEMORY_STORAGE_KEY] || { domains: {} };
+    
+    const exportData = {
+        version: 1,
+        exportedAt: Date.now(),
+        domains: store.domains
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zeroutine-memory-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    showStatus('记忆已导出', 'success');
+});
+
+// 导入记忆
+document.getElementById('importMemoryBtn')?.addEventListener('click', () => {
+    document.getElementById('memoryFileInput')?.click();
+});
+
+document.getElementById('memoryFileInput')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+        const text = await file.text();
+        const imported = JSON.parse(text);
+        
+        if (!imported.domains) {
+            throw new Error('无效的记忆数据格式');
+        }
+        
+        const MEMORY_STORAGE_KEY = 'projectMemory';
+        const data = await chrome.storage.local.get(MEMORY_STORAGE_KEY);
+        const store = data[MEMORY_STORAGE_KEY] || { version: 1, domains: {} };
+        
+        // 合并
+        for (const [domain, memory] of Object.entries(imported.domains)) {
+            if (store.domains[domain]) {
+                store.domains[domain].selectorPatterns = {
+                    ...store.domains[domain].selectorPatterns,
+                    ...memory.selectorPatterns
+                };
+                store.domains[domain].taskTemplates = {
+                    ...store.domains[domain].taskTemplates,
+                    ...memory.taskTemplates
+                };
+            } else {
+                store.domains[domain] = memory;
+            }
+        }
+        
+        await chrome.storage.local.set({ [MEMORY_STORAGE_KEY]: store });
+        showStatus(`已导入 ${Object.keys(imported.domains).length} 个域名的记忆`, 'success');
+        loadMemoryStats();
+    } catch (err) {
+        showStatus('导入失败: ' + err.message, 'error');
+    }
+    
+    // 清空 input
+    e.target.value = '';
+});
+
+// 清除全部记忆
+document.getElementById('clearMemoryBtn')?.addEventListener('click', async () => {
+    if (!confirm('确定清除所有项目记忆？此操作不可撤销！')) return;
+    
+    await chrome.storage.local.remove('projectMemory');
+    showStatus('已清除所有记忆', 'success');
+    loadMemoryStats();
+});
