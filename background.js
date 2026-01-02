@@ -349,10 +349,22 @@ async function runIterativeLoop(tabId, userGoal, apiConfig) {
             
         } catch (error) {
             console.error('迭代循环错误:', error);
-            globalState.stepInfo = `❌ 错误: ${error.message}`;
+            const errorMsg = error.message || String(error);
+            globalState.stepInfo = `❌ 错误: ${errorMsg.substring(0, 50)}...`; // 避免过长
+            
+            // 发送给 Overlay 显示详细错误
+            updateOverlay(tabId, `❌ 未预期的错误: ${errorMsg}`);
+            
+            // 严重错误停止，但如果是临时网络错误等可以考虑重试（当前简化为停止）
             globalState.active = false;
             saveState();
-            updateOverlay(tabId, globalState.stepInfo);
+            
+            // 向 popup 发送错误以便调试
+            chrome.runtime.sendMessage({ 
+                type: 'TASK_ERROR', 
+                error: errorMsg 
+            }).catch(() => {});
+            
             break;
         }
     }

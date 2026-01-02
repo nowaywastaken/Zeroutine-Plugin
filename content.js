@@ -39,39 +39,28 @@
         <div id="ai-status-text" style="line-height: 1.4; color: #ddd;">
             正在初始化...
         </div>
-        <div id="ai-thinking-section" style="display: none; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px;">
-            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">🧠 AI 正在思考...</div>
+        <div id="ai-thinking-section" style="display: none; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
             <div id="ai-thinking-content" style="
-                height: 3.6em;
-                line-height: 1.2em;
-                font-size: 11px;
-                font-family: 'SF Mono', Consolas, monospace;
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                color: #00ff88;
-                padding: 6px 8px;
+                max-height: 200px;
+                line-height: 1.5;
+                font-size: 12px;
+                font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+                padding: 10px;
                 border-radius: 6px;
                 overflow-y: auto;
-                word-break: break-all;
+                word-break: break-word;
                 white-space: pre-wrap;
-                box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+                box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+                border: 1px solid #333;
             "></div>
         </div>
         <style>
-            #ai-thinking-content::-webkit-scrollbar { width: 4px; }
-            #ai-thinking-content::-webkit-scrollbar-thumb { background: #00ff8844; border-radius: 2px; }
-            .ai-cursor {
-                display: inline-block;
-                width: 6px;
-                height: 12px;
-                background: #00ff88;
-                margin-left: 2px;
-                animation: ai-blink 0.8s infinite;
-                vertical-align: middle;
-            }
-            @keyframes ai-blink {
-                0%, 50% { opacity: 1; }
-                51%, 100% { opacity: 0; }
-            }
+            #ai-thinking-content::-webkit-scrollbar { width: 6px; }
+            #ai-thinking-content::-webkit-scrollbar-track { background: #1e1e1e; }
+            #ai-thinking-content::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+            #ai-thinking-content::-webkit-scrollbar-thumb:hover { background: #777; }
         </style>
     `;
 
@@ -82,11 +71,15 @@
         const section = document.getElementById('ai-thinking-section');
         const content = document.getElementById('ai-thinking-content');
         if (section) {
-            section.style.display = 'block';
-            thinkingText = '';
-            typewriterQueue = [];
-            isTyping = false;
-            if (content) content.innerHTML = '<span class="ai-cursor"></span>';
+            // 只有当区域未显示时才重置，防止流式更新时被清空
+            if (section.style.display === 'none' || section.style.display === '') {
+                section.style.display = 'block';
+                thinkingText = '';
+                typewriterQueue = [];
+                isTyping = false;
+                // 清空内容，无需光标
+                if (content) content.innerHTML = '';
+            }
         }
     }
 
@@ -129,9 +122,11 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-        content.innerHTML = escapedText + '<span class="ai-cursor"></span>';
+            
+        // 直接设置内容，不带光标
+        content.innerHTML = escapedText;
         
-        // 自动滚动到底部（实现填满后向上滚动的效果）
+        // 自动滚动到底部
         content.scrollTop = content.scrollHeight;
         
         // 根据队列长度调整速度
